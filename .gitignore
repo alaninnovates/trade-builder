@@ -1,0 +1,10 @@
+.env
+.env.dev
+.DS_STORE
+
+# executables
+trade-builder
+trade-builder-dev
+
+# temp files
+trades.json
