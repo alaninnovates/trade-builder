@@ -29,7 +29,7 @@ func PostCommand(b *common.Bot) handler.Command {
 				},
 				discord.ApplicationCommandOptionString{
 					Name:        "expire_time",
-					Description: "How long before your trade post expires (in hh:mm:ss or mm/dd UTC)",
+					Description: "How long before your trade post expires (in HH:MM or mm/dd UTC)",
 					Required:    false,
 				},
 				discord.ApplicationCommandOptionBool{
@@ -52,9 +52,8 @@ func PostCommand(b *common.Bot) handler.Command {
 
 				var duration time.Duration
 				if expExists {
-					// parse duration of hh:mm:ss or mm/dd using either common.ParseHHMMSS or common.ParseMMDD, whichever does not return an error
 					var err error
-					duration, err = common.ParseHHMMSS(expireTime)
+					duration, err = common.ParseHHMM(expireTime)
 					if err != nil {
 						duration, err = common.ParseMMDD(expireTime)
 					}

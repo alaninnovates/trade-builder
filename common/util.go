@@ -30,9 +30,9 @@ func ArrayIncludes[T comparable](array []T, value T) bool {
 	return false
 }
 
-func ParseHHMMSS(input string) (time.Duration, error) {
+func ParseHHMM(input string) (time.Duration, error) {
 	parts := strings.Split(input, ":")
-	if len(parts) != 3 {
+	if len(parts) != 2 {
 		return 0, fmt.Errorf("invalid format")
 	}
 
@@ -44,12 +44,8 @@ func ParseHHMMSS(input string) (time.Duration, error) {
 	if err != nil {
 		return 0, err
 	}
-	seconds, err := strconv.Atoi(parts[2])
-	if err != nil {
-		return 0, err
-	}
 
-	duration := time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute + time.Duration(seconds)*time.Second
+	duration := time.Duration(hours)*time.Hour + time.Duration(minutes)*time.Minute
 	return duration, nil
 }
 
