@@ -29,7 +29,7 @@ func PostCommand(b *common.Bot) handler.Command {
 				},
 				discord.ApplicationCommandOptionString{
 					Name:        "expire_time",
-					Description: "How long before your trade post expires (in hh:mm:ss or mm/dd)",
+					Description: "How long before your trade post expires (in hh:mm:ss or mm/dd UTC)",
 					Required:    false,
 				},
 				discord.ApplicationCommandOptionBool{
@@ -52,7 +52,12 @@ func PostCommand(b *common.Bot) handler.Command {
 
 				var duration time.Duration
 				if expExists {
-					duration, err := time.ParseDuration(expireTime)
+					// parse duration of hh:mm:ss or mm/dd using either common.ParseHHMMSS or common.ParseMMDD, whichever does not return an error
+					var err error
+					duration, err = common.ParseHHMMSS(expireTime)
+					if err != nil {
+						duration, err = common.ParseMMDD(expireTime)
+					}
 					if err != nil {
 						return event.CreateMessage(discord.MessageCreate{
 							Content: "Invalid duration.",
@@ -125,7 +130,7 @@ func PostCommand(b *common.Bot) handler.Command {
 				postID := post.InsertedID.(primitive.ObjectID).Hex()
 
 				desc := fmt.Sprintf("Your trade has been posted to the trade builder website. You can view it [here](https://trade.meta-bee.com/trade/%s)", postID)
-				if ssExists && serverSync {
+				if serverSync {
 					desc += "\nYour trade will be posted to servers subscribed with server sync."
 				}
 				err = event.CreateMessage(discord.MessageCreate{
@@ -145,7 +150,7 @@ func PostCommand(b *common.Bot) handler.Command {
 				tr.FromBson(h)
 				render := trade.RenderTrade(tr)
 
-				if ssExists && serverSync {
+				if serverSync {
 					cur, err := b.Db.Collection("serversync").Find(context.TODO(), bson.M{})
 					if err != nil {
 						return err
