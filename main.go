@@ -5,6 +5,7 @@ import (
 	"alaninnovates.com/trade-builder/database"
 	"alaninnovates.com/trade-builder/marketplugin"
 	"alaninnovates.com/trade-builder/miscplugin"
+	"alaninnovates.com/trade-builder/statsplugin"
 	"alaninnovates.com/trade-builder/syncplugin"
 	"alaninnovates.com/trade-builder/tradeplugin"
 	"context"
@@ -132,6 +133,8 @@ func main() {
 		logger.Error("Failed to create disgo client")
 		panic(err)
 	}
+
+	statsplugin.Initialize(h, tradeBuilder, devMode)
 
 	if !devMode && syncCommands {
 		h.SyncCommands(tradeBuilder.Client)
