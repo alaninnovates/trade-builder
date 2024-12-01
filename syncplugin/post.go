@@ -12,6 +12,7 @@ import (
 	"github.com/disgoorg/snowflake/v2"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"strconv"
 	"time"
 )
 
@@ -44,6 +45,10 @@ func PostCommand(b *common.Bot) handler.Command {
 				tradeID := data.String("trade_id")
 				expireTime, expExists := data.OptString("expire_time")
 				serverSync, ssExists := data.OptBool("server_sync")
+
+				if !ssExists {
+					serverSync = true
+				}
 
 				var duration time.Duration
 				if expExists {
@@ -92,8 +97,23 @@ func PostCommand(b *common.Bot) handler.Command {
 					}
 				}
 
+				var avatarUrl string
+				avatarUrlQuery := event.User().AvatarURL()
+
+				if avatarUrlQuery == nil {
+					discrim, err := strconv.Atoi(event.User().Discriminator)
+					if err != nil {
+						return err
+					}
+					avatarUrl = "https://cdn.discordapp.com/embed/avatars/" + strconv.Itoa(discrim%5) + ".png"
+				} else {
+					avatarUrl = *avatarUrlQuery
+				}
+
 				post, err := b.Db.Collection("posts").InsertOne(context.TODO(), database.WebsitePost{
 					UserId:     event.User().ID.String(),
+					UserName:   event.User().Username,
+					UserAvatar: avatarUrl,
 					ExpireTime: primitive.NewDateTimeFromTime(time.Now().Add(duration)),
 					ServerSync: serverSync,
 					Trade:      h,

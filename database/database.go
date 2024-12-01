@@ -35,6 +35,8 @@ type PremiumUser struct {
 
 type WebsitePost struct {
 	UserId     string             `bson:"user_id"`
+	UserName   string             `bson:"user_name"`
+	UserAvatar string             `bson:"user_avatar"`
 	ExpireTime primitive.DateTime `bson:"expire_time"`
 	ServerSync bool               `bson:"server_sync"`
 	Trade      bson.D             `bson:"trade"`
