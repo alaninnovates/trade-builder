@@ -148,7 +148,7 @@ func TradeCommand(b *common.Bot, tradeService *State) handler.Command {
 			"create": func(event *events.ApplicationCommandInteractionCreate) error {
 				tradeService.CreateTrade(event.User().ID)
 				return event.CreateMessage(discord.MessageCreate{
-					Content: "Created new hive. You can now add offers with the `/trade offering` command or looking for request with the `/trade lookingfor` command.",
+					Content: "Created new trade. You can now add offers with the `/trade offering` command or looking for request with the `/trade lookingfor` command.",
 				})
 			},
 			"lookingfor": func(event *events.ApplicationCommandInteractionCreate) error {
