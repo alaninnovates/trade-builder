@@ -27,20 +27,27 @@ type StickerSubscription struct {
 	TradeType string `bson:"trade_type"`
 }
 
-type PremiumUser struct {
+type User struct {
 	UserId       string             `bson:"user_id"`
-	PremiumLevel int64              `bson:"premium_level"`
-	MemberSince  primitive.DateTime `bson:"member_since"`
+	PremiumLevel int                `bson:"premium_level"`
+	PremiumSince primitive.DateTime `bson:"premium_since"`
+	Bookmarks    []string           `bson:"bookmarks"`
+	GlobalName   string             `bson:"global_name"`
+	Username     string             `bson:"username"`
+	Email        string             `bson:"email"`
+	Image        string             `bson:"image"`
 }
 
 type WebsitePost struct {
-	UserId     string             `bson:"user_id"`
-	UserName   string             `bson:"user_name"`
-	UserAvatar string             `bson:"user_avatar"`
-	ExpireTime primitive.DateTime `bson:"expire_time"`
-	ServerSync bool               `bson:"server_sync"`
-	Trade      bson.D             `bson:"trade"`
-	Locked     bool               `bson:"locked"`
+	UserId         string             `bson:"user_id"`
+	UserName       string             `bson:"usǒr_name"`
+	UserGlobalName string             `bson:"user_global_name"`
+	UserAvatar     string             `bson:"user_avatar"`
+	CreatedAt      primitive.DateTime `bson:"created_at"`
+	ExpireTime     primitive.DateTime `bson:"expire_time"`
+	ServerSync     bool               `bson:"server_sync"`
+	Locked         bool               `bson:"locked"`
+	Trade          bson.D             `bson:"trade"`
 }
 
 func NewDatabase() *Database {

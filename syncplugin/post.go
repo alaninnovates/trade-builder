@@ -114,21 +114,31 @@ func PostCommand(b *common.Bot) handler.Command {
 					avatarUrl = *avatarUrlQuery
 				}
 
+				var globalName string
+				globalNameQuery := event.User().GlobalName
+
+				if globalNameQuery == nil {
+					globalName = event.User().Username
+				} else {
+					globalName = *globalNameQuery
+				}
+
 				post, err := b.Db.Collection("posts").InsertOne(context.TODO(), database.WebsitePost{
-					UserId:     event.User().ID.String(),
-					UserName:   event.User().Username,
-					UserAvatar: avatarUrl,
-					ExpireTime: primitive.NewDateTimeFromTime(time.Now().Add(duration)),
-					ServerSync: serverSync,
-					Trade:      h,
-					Locked:     false,
+					UserId:         event.User().ID.String(),
+					UserName:       event.User().Username,
+					UserGlobalName: globalName,
+					UserAvatar:     avatarUrl,
+					ExpireTime:     primitive.NewDateTimeFromTime(time.Now().Add(duration)),
+					ServerSync:     serverSync,
+					Trade:          h,
+					Locked:         false,
 				})
 				if err != nil {
 					return err
 				}
 				postID := post.InsertedID.(primitive.ObjectID).Hex()
 
-				desc := fmt.Sprintf("Your trade has been posted to the trade builder website. You can view it [here](https://trade.meta-bee.com/trade/%s)", postID)
+				desc := fmt.Sprintf("Your trade has been posted to the trade builder website. You can view it [here](https://tradebuilder.app/trade/%s)", postID)
 				if serverSync {
 					desc += "\nYour trade will be posted to servers subscribed with server sync."
 				}
