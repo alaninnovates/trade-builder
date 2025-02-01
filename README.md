@@ -4,9 +4,11 @@ Trade Builder Bot is a Discord bot designed for the ROBLOX game Bee Swarm Simula
 
 Trade Builder Bot is closely integrated with its [website](https://tradebuilder.app), and users can post trades to the website directly from Discord. The website is designed to be user-friendly and easy to navigate, with a simple and clean design.
 
-## Screenshots
+## Demos
 
 ![Trade Builder Bot](https://cloud-punjwk6qj-hack-club-bot.vercel.app/0screenshot_2024-12-01_at_1.00.49_pm.png)
+
+![Trade Builder Bot Video](https://cloud-g9js8bv0i-hack-club-bot.vercel.app/0screen_recording_2025-01-31_at_7.40.25___pm.mp4)
 
 ## Installation
 
