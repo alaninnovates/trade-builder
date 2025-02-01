@@ -11,7 +11,7 @@ COPY . .
 RUN go build -o /trade-builder-bot .
 
 
-FROM scratch
+FROM alpine
 
 COPY --from=build /trade-builder-bot /trade-builder-bot
 COPY --from=build /trade-builder/assets /assets
