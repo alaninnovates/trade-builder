@@ -8,11 +8,11 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -o /trade-builder .
+RUN go build -o /trade-builder-bot .
 
 
 FROM scratch
 
-COPY --from=build /trade-builder /trade-builder
+COPY --from=build /trade-builder-bot /trade-builder-bot
 
-CMD ["/trade-builder"]
+CMD ["/trade-builder-bot"]
