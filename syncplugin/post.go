@@ -174,7 +174,7 @@ func PostCommand(b *common.Bot) handler.Command {
 							Embeds: []discord.Embed{
 								{
 									Title: "New trade post!",
-									Description: fmt.Sprintf("A new trade has been posted by %s. You can view and reply online [here](https://trade.meta-bee.com/trade/%s)",
+									Description: fmt.Sprintf("A new trade has been posted by %s. You can view and reply online [here](https://tradebuilder.app/trade/%s)",
 										event.User().Username, postID),
 									Image: &discord.EmbedResource{
 										URL: "attachment://trade.png",
