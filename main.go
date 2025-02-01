@@ -34,20 +34,23 @@ func main() {
 		Level: slog.LevelInfo,
 	}))
 
+	useEnvFilePtr := flag.Bool("env", false, "a bool")
 	devPtr := flag.Bool("dev", false, "a bool")
 	syncCommandsPtr := flag.Bool("sync", false, "a bool")
 	flag.Parse()
-	if *devPtr {
-		err := godotenv.Load(".env.dev")
-		if err != nil {
-			logger.Error("Failed to load .env.dev")
-			panic(err)
-		}
-	} else {
-		err := godotenv.Load(".env")
-		if err != nil {
-			logger.Error("Failed to load .env")
-			panic(err)
+	if *useEnvFilePtr {
+		if *devPtr {
+			err := godotenv.Load(".env.dev")
+			if err != nil {
+				logger.Error("Failed to load .env.dev")
+				panic(err)
+			}
+		} else {
+			err := godotenv.Load(".env")
+			if err != nil {
+				logger.Error("Failed to load .env")
+				panic(err)
+			}
 		}
 	}
 	devMode := *devPtr
