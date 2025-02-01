@@ -14,5 +14,6 @@ RUN go build -o /trade-builder-bot .
 FROM scratch
 
 COPY --from=build /trade-builder-bot /trade-builder-bot
+COPY --from=build /trade-builder/assets /assets
 
 CMD ["/trade-builder-bot"]
