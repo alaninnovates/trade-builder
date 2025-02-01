@@ -8,7 +8,8 @@ Trade Builder Bot is closely integrated with its [website](https://tradebuilder.
 
 ![Trade Builder Bot](https://cloud-punjwk6qj-hack-club-bot.vercel.app/0screenshot_2024-12-01_at_1.00.49_pm.png)
 
-![Trade Builder Bot Video](https://cloud-g9js8bv0i-hack-club-bot.vercel.app/0screen_recording_2025-01-31_at_7.40.25___pm.mp4)
+https://github.com/user-attachments/assets/442faa68-2c90-450f-9ff6-25f9ae1d9918
+
 
 ## Installation
 
