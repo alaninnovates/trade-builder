@@ -2,7 +2,6 @@ package database
 
 import (
 	"context"
-	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"time"
 
@@ -38,16 +37,38 @@ type User struct {
 	Image        string             `bson:"image"`
 }
 
+type Beequip struct {
+	Buffs     map[string]int  `bson:"buffs"`
+	Debuffs   map[string]int  `bson:"debuffs"`
+	Ability   map[string]bool `bson:"ability"`
+	Bonuses   map[string]int  `bson:"bonuses"`
+	Potential int             `bson:"potential"`
+	Waxes     []string        `bson:"waxes"`
+}
+
+type Trade struct {
+	// either a map[string]WebsitePostBeequip (for beequips) or a map[string]int (for stickers)
+	Offering   interface{} `bson:"offering"`
+	LookingFor interface{} `bson:"lookingFor"`
+}
+
 type WebsitePost struct {
 	UserId         string             `bson:"user_id"`
-	UserName       string             `bson:"usǒr_name"`
+	UserName       string             `bson:"user_name"`
 	UserGlobalName string             `bson:"user_global_name"`
 	UserAvatar     string             `bson:"user_avatar"`
 	CreatedAt      primitive.DateTime `bson:"created_at"`
 	ExpireTime     primitive.DateTime `bson:"expire_time"`
 	ServerSync     bool               `bson:"server_sync"`
 	Locked         bool               `bson:"locked"`
-	Trade          bson.D             `bson:"trade"`
+	Trade          Trade              `bson:"trade"`
+}
+
+type TradeSave struct {
+	Id     string `bson:"_id"`
+	Name   string `bson:"name"`
+	UserId string `bson:"user_id"`
+	Trade  Trade  `bson:"trade"`
 }
 
 func NewDatabase() *Database {

@@ -93,11 +93,18 @@ func PostCommand(b *common.Bot) handler.Command {
 					})
 				}
 
-				// Remove _id, name, and user_id from trade
-				for i := 0; i < len(h); i++ {
-					if h[i].Key == "_id" || h[i].Key == "name" || h[i].Key == "user_id" {
-						h = append(h[:i], h[i+1:]...)
-						i--
+				var t database.Trade
+				for _, v := range h {
+					if v.Key == "lookingFor" {
+						var lookingFor map[string]interface{}
+						lookingForBson, _ := bson.Marshal(v.Value)
+						_ = bson.Unmarshal(lookingForBson, &lookingFor)
+						t.LookingFor = lookingFor
+					} else if v.Key == "offering" {
+						var offering map[string]interface{}
+						offeringBson, _ := bson.Marshal(v.Value)
+						_ = bson.Unmarshal(offeringBson, &offering)
+						t.Offering = offering
 					}
 				}
 
@@ -130,7 +137,7 @@ func PostCommand(b *common.Bot) handler.Command {
 					UserAvatar:     avatarUrl,
 					ExpireTime:     primitive.NewDateTimeFromTime(time.Now().Add(duration)),
 					ServerSync:     serverSync,
-					Trade:          h,
+					Trade:          t,
 					Locked:         false,
 				})
 				if err != nil {

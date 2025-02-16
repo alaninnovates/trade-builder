@@ -28,11 +28,14 @@ func centerAnchorL(fullSize, desiredWidth int) float64 {
 func RenderTrade(t *Trade) *io.PipeReader {
 	var offeringStickers, lfStickers []string
 	var offeringQuantities, lfQuantities []int
-	for _, sticker := range t.GetLookingFor() {
+	// todo: support beequips
+	for _, stickerRaw := range t.GetLookingFor() {
+		sticker := stickerRaw.(Sticker)
 		lfStickers = append(lfStickers, sticker.Name)
 		lfQuantities = append(lfQuantities, sticker.Quantity)
 	}
-	for _, sticker := range t.GetOffering() {
+	for _, stickerRaw := range t.GetOffering() {
+		sticker := stickerRaw.(Sticker)
 		offeringStickers = append(offeringStickers, sticker.Name)
 		offeringQuantities = append(offeringQuantities, sticker.Quantity)
 	}

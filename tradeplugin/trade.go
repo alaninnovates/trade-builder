@@ -28,39 +28,89 @@ func TradeCommand(b *common.Bot, tradeService *State) handler.Command {
 					Name:        "create",
 					Description: "Start building your trade",
 				},
-				discord.ApplicationCommandOptionSubCommand{
+				discord.ApplicationCommandOptionSubCommandGroup{
 					Name:        "lookingfor",
-					Description: "Add a sticker you are looking for",
-					Options: []discord.ApplicationCommandOption{
-						discord.ApplicationCommandOptionString{
-							Name:         "sticker_name",
-							Description:  "The name of the sticker",
-							Required:     true,
-							Autocomplete: true,
+					Description: "Add a item you are looking for",
+					Options: []discord.ApplicationCommandOptionSubCommand{
+						{
+							Name:        "sticker",
+							Description: "Add a sticker you are looking for",
+							Options: []discord.ApplicationCommandOption{
+								discord.ApplicationCommandOptionString{
+									Name:         "sticker_name",
+									Description:  "The name of the sticker",
+									Required:     true,
+									Autocomplete: true,
+								},
+								discord.ApplicationCommandOptionInt{
+									Name:        "quantity",
+									Description: "The quantity of the sticker",
+									Required:    true,
+									MinValue:    json.Ptr(1),
+								},
+							},
 						},
-						discord.ApplicationCommandOptionInt{
-							Name:        "quantity",
-							Description: "The quantity of the sticker",
-							Required:    true,
-							MinValue:    json.Ptr(1),
+						{
+							Name:        "beequip",
+							Description: "Add a beequip you are looking for",
+							Options: []discord.ApplicationCommandOption{
+								discord.ApplicationCommandOptionString{
+									Name:         "beequip_name",
+									Description:  "The name of the beequip",
+									Required:     true,
+									Autocomplete: true,
+								},
+								discord.ApplicationCommandOptionInt{
+									Name:        "potential",
+									Description: "The potential of the beequip",
+									Required:    true,
+									MinValue:    json.Ptr(1),
+									MaxValue:    json.Ptr(5),
+								},
+							},
 						},
 					},
 				},
-				discord.ApplicationCommandOptionSubCommand{
+				discord.ApplicationCommandOptionSubCommandGroup{
 					Name:        "offering",
-					Description: "Add a sticker you are offering",
-					Options: []discord.ApplicationCommandOption{
-						discord.ApplicationCommandOptionString{
-							Name:         "sticker_name",
-							Description:  "The name of the sticker",
-							Required:     true,
-							Autocomplete: true,
+					Description: "Add a item you are offering",
+					Options: []discord.ApplicationCommandOptionSubCommand{
+						{
+							Name:        "sticker",
+							Description: "Add a sticker you are offering",
+							Options: []discord.ApplicationCommandOption{
+								discord.ApplicationCommandOptionString{
+									Name:         "sticker_name",
+									Description:  "The name of the sticker",
+									Required:     true,
+									Autocomplete: true,
+								},
+								discord.ApplicationCommandOptionInt{
+									Name:        "quantity",
+									Description: "The quantity of the sticker",
+									Required:    true,
+									MinValue:    json.Ptr(1),
+								},
+							},
 						},
-						discord.ApplicationCommandOptionInt{
-							Name:        "quantity",
-							Description: "The quantity of the sticker",
-							Required:    true,
-							MinValue:    json.Ptr(1),
+						{
+							Name:        "beequip",
+							Description: "Add a beequip you are offering",
+							Options: []discord.ApplicationCommandOption{
+								discord.ApplicationCommandOptionString{
+									Name:         "beequip_name",
+									Description:  "The name of the beequip",
+									Required:     true,
+									Autocomplete: true,
+								},
+								discord.ApplicationCommandOptionInt{
+									Name:        "potential",
+									Description: "The potential of the beequip",
+									Required:    true,
+									MinValue:    json.Ptr(1),
+									MaxValue:    json.Ptr(5),
+								},
+							},
 						},
 					},
 				},
@@ -151,7 +201,7 @@ func TradeCommand(b *common.Bot, tradeService *State) handler.Command {
 					Content: "Created new trade. You can now add offers with the `/trade offering` command or looking for request with the `/trade lookingfor` command.",
 				})
 			},
-			"lookingfor": func(event *events.ApplicationCommandInteractionCreate) error {
+			"lookingfor/sticker": func(event *events.ApplicationCommandInteractionCreate) error {
 				t := tradeService.GetTrade(event.User().ID)
 				if t == nil {
 					return event.CreateMessage(discord.MessageCreate{
@@ -161,7 +211,10 @@ func TradeCommand(b *common.Bot, tradeService *State) handler.Command {
 				data := event.SlashCommandInteractionData()
 				stickerName, _ := data.OptString("sticker_name")
 				quantity, _ := data.OptInt("quantity")
-				t.AddLookingFor(stickerName, quantity)
+				t.AddLookingForSticker(trade.Sticker{
+					Name:     stickerName,
+					Quantity: quantity,
+				})
 				b.Redis.Client().Incr(context.Background(), "daily:lookingfor:"+stickerName)
 				b.Redis.Client().Incr(context.Background(), "weekly:lookingfor:"+stickerName)
 				return event.CreateMessage(discord.MessageCreate{
@@ -174,7 +227,7 @@ func TradeCommand(b *common.Bot, tradeService *State) handler.Command {
 					},
 				})
 			},
-			"offering": func(event *events.ApplicationCommandInteractionCreate) error {
+			"offering/sticker": func(event *events.ApplicationCommandInteractionCreate) error {
 				t := tradeService.GetTrade(event.User().ID)
 				if t == nil {
 					return event.CreateMessage(discord.MessageCreate{
@@ -184,7 +237,10 @@ func TradeCommand(b *common.Bot, tradeService *State) handler.Command {
 				data := event.SlashCommandInteractionData()
 				stickerName, _ := data.OptString("sticker_name")
 				quantity, _ := data.OptInt("quantity")
-				t.AddOffering(stickerName, quantity)
+				t.AddOfferingSticker(trade.Sticker{
+					Name:     stickerName,
+					Quantity: quantity,
+				})
 				b.Redis.Client().Incr(context.Background(), "daily:offering:"+stickerName)
 				b.Redis.Client().Incr(context.Background(), "weekly:offering:"+stickerName)
 				return event.CreateMessage(discord.MessageCreate{
@@ -193,6 +249,67 @@ func TradeCommand(b *common.Bot, tradeService *State) handler.Command {
 							Title:       "Added Sticker",
 							Description: "Added " + stickerName + " x" + strconv.Itoa(quantity) + " to your offering list.",
 							Color:       common.ColorSuccess,
+						},
+					},
+				})
+			},
+			"lookingfor/beequip": func(event *events.ApplicationCommandInteractionCreate) error {
+				t := tradeService.GetTrade(event.User().ID)
+				if t == nil {
+					return event.CreateMessage(discord.MessageCreate{
+						Content: "You don't have an active trade. Create one with the `/trade create` command.",
+					})
+				}
+				data := event.SlashCommandInteractionData()
+				beequipName, _ := data.OptString("beequip_name")
+				potential, _ := data.OptInt("potential")
+				t.SetBeequipInProgressStep(trade.BeequipInProgressStepBuffs)
+				t.SetBeequipInProgressType("lookingFor")
+				t.SetBeequipInProgressData(trade.Beequip{
+					Name:      beequipName,
+					Potential: potential,
+				})
+				var buffSelectMenuOptions []discord.StringSelectMenuOption
+				buffs := loaders.GetBeequipBuffs(beequipName)
+				for _, buff := range buffs {
+					buffSelectMenuOptions = append(buffSelectMenuOptions, discord.StringSelectMenuOption{
+						Label: buff,
+						Value: buff,
+					})
+				}
+				return event.CreateMessage(discord.MessageCreate{
+					Embeds: []discord.Embed{
+						{
+							Title:       "Select Buffs",
+							Description: "Select the buffs for your beequip.\n\nCurrently selected buffs: None",
+							Color:       common.ColorPrimary,
+						},
+					},
+					Components: []discord.ContainerComponent{
+						discord.ActionRowComponent{
+							discord.StringSelectMenuComponent{
+								CustomID:    fmt.Sprintf("handler:beequipbuffs:%s", event.User().ID.String()),
+								Placeholder: "Select Buff",
+								Options:     buffSelectMenuOptions,
+							},
+						},
+						discord.ActionRowComponent{
+							discord.ButtonComponent{
+								CustomID: fmt.Sprintf("handler:beequipconfirm:%s", event.User().ID.String()),
+								Label:    "Confirm Buffs",
+								Style:    discord.ButtonStylePrimary,
+							},
+						},
+					},
+				})
+			},
+			"offering/beequip": func(event *events.ApplicationCommandInteractionCreate) error {
+				return event.CreateMessage(discord.MessageCreate{
+					Embeds: []discord.Embed{
+						{
+							Title:       "WIP",
+							Description: "This feature is a work in progress.",
+							Color:       common.ColorPrimary,
 						},
 					},
 				})
@@ -282,12 +399,15 @@ func TradeCommand(b *common.Bot, tradeService *State) handler.Command {
 						Content: "You don't have an active trade. Create one with the `/trade create` command.",
 					})
 				}
+				// todo: handle beequips
 				lfText := ""
-				for _, lf := range t.GetLookingFor() {
+				for _, lfRaw := range t.GetLookingFor() {
+					lf := lfRaw.(trade.Sticker)
 					lfText += "- " + lf.Name + " x" + strconv.Itoa(lf.Quantity) + "\n"
 				}
 				offeringText := ""
-				for _, offering := range t.GetOffering() {
+				for _, offeringRaw := range t.GetOffering() {
+					offering := offeringRaw.(trade.Sticker)
 					offeringText += "- " + offering.Name + " x" + strconv.Itoa(offering.Quantity) + "\n"
 				}
 				return event.CreateMessage(discord.MessageCreate{
@@ -445,9 +565,11 @@ func TradeCommand(b *common.Bot, tradeService *State) handler.Command {
 			},
 		},
 		AutocompleteHandlers: map[string]handler.AutocompleteHandler{
-			"lookingfor": makeAutocompleteHandler(loaders.GetAllStickers(), "sticker_name"),
-			"offering":   makeAutocompleteHandler(loaders.GetAllStickers(), "sticker_name"),
-			"remove":     makeAutocompleteHandler(loaders.GetAllStickers(), "sticker_name"),
+			"lookingfor/sticker": makeAutocompleteHandler(loaders.GetAllStickers(), "sticker_name"),
+			"offering/sticker":   makeAutocompleteHandler(loaders.GetAllStickers(), "sticker_name"),
+			"lookingfor/beequip": makeAutocompleteHandler(loaders.GetAllBeequips(), "beequip_name"),
+			"offering/beequip":   makeAutocompleteHandler(loaders.GetAllBeequips(), "beequip_name"),
+			"remove":             makeAutocompleteHandler(loaders.GetAllStickers(), "sticker_name"),
 		},
 	}
 }
@@ -539,7 +661,10 @@ func AddLookingForModal(b *common.Bot, tradeService *State) handler.Modal {
 					Flags:   discord.MessageFlagEphemeral,
 				})
 			}
-			t.AddLookingFor(sticker, quantityInt)
+			t.AddLookingForSticker(trade.Sticker{
+				Name:     sticker,
+				Quantity: quantityInt,
+			})
 			b.Redis.Client().Incr(context.Background(), "daily:lookingfor:"+sticker)
 			b.Redis.Client().Incr(context.Background(), "weekly:lookingfor:"+sticker)
 			return event.CreateMessage(discord.MessageCreate{
@@ -620,7 +745,10 @@ func AddOfferModal(b *common.Bot, tradeService *State) handler.Modal {
 					Flags:   discord.MessageFlagEphemeral,
 				})
 			}
-			t.AddOffering(sticker, quantityInt)
+			t.AddOfferingSticker(trade.Sticker{
+				Name:     sticker,
+				Quantity: quantityInt,
+			})
 			b.Redis.Client().Incr(context.Background(), "daily:offering:"+sticker)
 			b.Redis.Client().Incr(context.Background(), "weekly:offering:"+sticker)
 			return event.CreateMessage(discord.MessageCreate{
@@ -703,6 +831,7 @@ func SaveIdButton() handler.Component {
 func Initialize(h *handler.Handler, b *common.Bot) {
 	tradeService := NewTradeService()
 	h.AddCommands(TradeCommand(b, tradeService))
-	h.AddComponents(AddLookingForButton(), AddOfferButton(), RerenderButton(b, tradeService), SaveIdButton())
+	h.AddComponents(AddLookingForButton(), AddOfferButton(), RerenderButton(b, tradeService), SaveIdButton(),
+		ConfirmButton(tradeService))
 	h.AddModals(AddLookingForModal(b, tradeService), AddOfferModal(b, tradeService))
 }

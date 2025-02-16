@@ -12,11 +12,6 @@ import (
 	"strings"
 )
 
-/*
-/subscribe <type:lf/offering> <sticker_name>
-
-premium only: recieve a dm whenver someone posts a trade with this item
-*/
 func SubscribeCommand(b *common.Bot) handler.Command {
 	return handler.Command{
 		Create: discord.SlashCommandCreate{
