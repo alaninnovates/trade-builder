@@ -283,7 +283,7 @@ func AddAbilityInfoButton(tradeService *State) handler.Component {
 				Embeds: &[]discord.Embed{
 					{
 						Title:       "Select Abilities",
-						Description: "Select the abilities for your beequip.\n\nCurrently selected abilities:\n" + abilityValuesStr,
+						Description: fmt.Sprintf("Select the abilities for your beequip.\n\nCurrently selected abilities:\n%s", abilityValuesStr),
 						Color:       common.ColorPrimary,
 					},
 				},
@@ -403,7 +403,7 @@ func AddBeequipInfoModal(tradeService *State) handler.Modal {
 				Embeds: &[]discord.Embed{
 					{
 						Title:       "Select " + cases.Title(language.English).String(infoGroup),
-						Description: fmt.Sprintf("Select the %s for your beequip.\n\nCurrently selected %s:\n"+currSelectedBuffString, infoGroup, infoGroup),
+						Description: fmt.Sprintf("Select the %s for your beequip.\n\nCurrently selected %s:\n%s", infoGroup, infoGroup, currSelectedBuffString),
 						Color:       common.ColorPrimary,
 					},
 				},
