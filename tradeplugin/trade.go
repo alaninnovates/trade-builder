@@ -288,14 +288,14 @@ func TradeCommand(b *common.Bot, tradeService *State) handler.Command {
 					Components: []discord.ContainerComponent{
 						discord.ActionRowComponent{
 							discord.StringSelectMenuComponent{
-								CustomID:    fmt.Sprintf("handler:beequipbuffs:%s", event.User().ID.String()),
+								CustomID:    fmt.Sprintf("handler:beequip-info-number:%s:buffs", event.User().ID.String()),
 								Placeholder: "Select Buff",
 								Options:     buffSelectMenuOptions,
 							},
 						},
 						discord.ActionRowComponent{
 							discord.ButtonComponent{
-								CustomID: fmt.Sprintf("handler:beequipconfirm:%s", event.User().ID.String()),
+								CustomID: fmt.Sprintf("handler:beequip-confirm:%s", event.User().ID.String()),
 								Label:    "Confirm Buffs",
 								Style:    discord.ButtonStylePrimary,
 							},
@@ -832,6 +832,6 @@ func Initialize(h *handler.Handler, b *common.Bot) {
 	tradeService := NewTradeService()
 	h.AddCommands(TradeCommand(b, tradeService))
 	h.AddComponents(AddLookingForButton(), AddOfferButton(), RerenderButton(b, tradeService), SaveIdButton(),
-		ConfirmButton(tradeService))
-	h.AddModals(AddLookingForModal(b, tradeService), AddOfferModal(b, tradeService))
+		ConfirmButton(tradeService), AddNumberInfoButton(tradeService))
+	h.AddModals(AddLookingForModal(b, tradeService), AddOfferModal(b, tradeService), AddBeequipInfoModal(tradeService))
 }
