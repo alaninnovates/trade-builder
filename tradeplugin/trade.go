@@ -832,6 +832,6 @@ func Initialize(h *handler.Handler, b *common.Bot) {
 	tradeService := NewTradeService()
 	h.AddCommands(TradeCommand(b, tradeService))
 	h.AddComponents(AddLookingForButton(), AddOfferButton(), RerenderButton(b, tradeService), SaveIdButton(),
-		ConfirmButton(tradeService), AddNumberInfoButton(tradeService), AddAbilityInfoButton(tradeService))
+		ConfirmButton(tradeService), AddNumberInfoButton(tradeService), AddAbilityInfoButton(tradeService), AddWaxInfoButton(tradeService))
 	h.AddModals(AddLookingForModal(b, tradeService), AddOfferModal(b, tradeService), AddBeequipInfoModal(tradeService))
 }

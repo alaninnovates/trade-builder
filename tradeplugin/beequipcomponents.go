@@ -2,6 +2,7 @@ package tradeplugin
 
 import (
 	"alaninnovates.com/trade-builder/common"
+	"alaninnovates.com/trade-builder/common/bssdata"
 	"alaninnovates.com/trade-builder/common/loaders"
 	"alaninnovates.com/trade-builder/tradeplugin/trade"
 	"fmt"
@@ -32,7 +33,7 @@ var MissingMessage = discord.MessageUpdate{
 	Components: &[]discord.ContainerComponent{},
 }
 
-func GenerateBeequipMessage(userId string, stepType string, stepTypePlural string, options []string) discord.MessageUpdate {
+func GenerateBeequipMessage(userId string, stepTypePlural string, options []string) discord.MessageUpdate {
 	stepTypeCapitalized := cases.Title(language.English).String(stepTypePlural)
 	var optSelectMenuOptions []discord.StringSelectMenuOption
 	for _, opt := range options {
@@ -41,7 +42,6 @@ func GenerateBeequipMessage(userId string, stepType string, stepTypePlural strin
 			Value: opt,
 		})
 	}
-	fmt.Println(stepType, stepTypePlural, stepTypeCapitalized, options, userId)
 	return discord.MessageUpdate{
 		Embeds: &[]discord.Embed{
 			{
@@ -107,6 +107,35 @@ func GenerateAbilityMessage(event *events.ComponentInteractionCreate, beequip tr
 	}
 }
 
+func GenerateWaxMessage(event *events.ComponentInteractionCreate) discord.MessageUpdate {
+	return discord.MessageUpdate{
+		Embeds: &[]discord.Embed{
+			{
+				Title:       "Select Waxes",
+				Description: "Select the waxes for your beequip.\n\nCurrently selected wax order: None",
+				Color:       common.ColorPrimary,
+			},
+		},
+		Components: &[]discord.ContainerComponent{
+			discord.ActionRowComponent{
+				discord.StringSelectMenuComponent{
+					CustomID:    fmt.Sprintf("handler:beequip-info-wax:%s", event.User().ID.String()),
+					Placeholder: "Select wax",
+					Options:     bssdata.WaxSelectMenuOptions,
+				},
+			},
+			discord.ActionRowComponent{
+				// todo: UNDO wax button
+				discord.ButtonComponent{
+					CustomID: fmt.Sprintf("handler:beequip-confirm:%s", event.User().ID.String()),
+					Label:    "Confirm Waxes",
+					Style:    discord.ButtonStylePrimary,
+				},
+			},
+		},
+	}
+}
+
 func ConfirmButton(tradeService *State) handler.Component {
 	return handler.Component{
 		Name:  "beequip-confirm",
@@ -125,21 +154,21 @@ func ConfirmButton(tradeService *State) handler.Component {
 				if len(debuffs) == 0 {
 					if len(loaders.GetBeequipAbility(beequip.Name)) == 0 {
 						t.SetBeequipInProgressStep(trade.BeequipInProgressStepBonuses)
-						return event.UpdateMessage(GenerateBeequipMessage(event.User().ID.String(), "bonus", "bonuses", loaders.GetBeequipBonuses(beequip.Name)))
+						return event.UpdateMessage(GenerateBeequipMessage(event.User().ID.String(), "bonuses", loaders.GetBeequipBonuses(beequip.Name)))
 					}
 					t.SetBeequipInProgressStep(trade.BeequipInProgressStepAbility)
 					return event.UpdateMessage(GenerateAbilityMessage(event, beequip))
 				}
-				return event.UpdateMessage(GenerateBeequipMessage(event.User().ID.String(), "debuff", "debuffs", debuffs))
+				return event.UpdateMessage(GenerateBeequipMessage(event.User().ID.String(), "debuffs", debuffs))
 			case trade.BeequipInProgressStepDebuffs:
 				t.SetBeequipInProgressStep(trade.BeequipInProgressStepAbility)
 				return event.UpdateMessage(GenerateAbilityMessage(event, beequip))
 			case trade.BeequipInProgressStepAbility:
 				t.SetBeequipInProgressStep(trade.BeequipInProgressStepBonuses)
-				return event.UpdateMessage(GenerateBeequipMessage(event.User().ID.String(), "bonus", "bonuses", loaders.GetBeequipBonuses(beequip.Name)))
+				return event.UpdateMessage(GenerateBeequipMessage(event.User().ID.String(), "bonuses", loaders.GetBeequipBonuses(beequip.Name)))
 			case trade.BeequipInProgressStepBonuses:
 				t.SetBeequipInProgressStep(trade.BeequipInProgressStepWaxes)
-				// todo: this is special
+				return event.UpdateMessage(GenerateWaxMessage(event))
 			case trade.BeequipInProgressStepWaxes:
 				t.SetBeequipInProgressStep(trade.BeequipInProgressStepNone)
 				switch t.GetBeequipInProgressType() {
@@ -151,8 +180,13 @@ func ConfirmButton(tradeService *State) handler.Component {
 				t.SetBeequipInProgressData(trade.Beequip{})
 				t.SetBeequipInProgressType("")
 				return event.UpdateMessage(discord.MessageUpdate{
-					Content:    json.Ptr("Beequip added!"),
-					Embeds:     &[]discord.Embed{},
+					Embeds: &[]discord.Embed{
+						{
+							Title:       "Beequip Added",
+							Description: "Your beequip has been added! View your trade with `/trade view`",
+							Color:       common.ColorSuccess,
+						},
+					},
 					Components: &[]discord.ContainerComponent{},
 				})
 			}
@@ -269,6 +303,58 @@ func AddAbilityInfoButton(tradeService *State) handler.Component {
 	}
 }
 
+func AddWaxInfoButton(tradeService *State) handler.Component {
+	return handler.Component{
+		Name: "beequip-info-wax",
+		Check: func(event *events.ComponentInteractionCreate) bool {
+			allow := event.User().ID.String() == strings.Split(event.StringSelectMenuInteractionData().CustomID(), ":")[2]
+			if !allow {
+				_ = event.CreateMessage(discord.NewMessageCreateBuilder().
+					SetContent("This is not your trade!").
+					SetEphemeral(true).
+					Build())
+			}
+			return allow
+		},
+		Handler: func(event *events.ComponentInteractionCreate) error {
+			t := tradeService.GetTrade(event.User().ID)
+			if t == nil {
+				return event.UpdateMessage(MissingMessage)
+			}
+			interactionData := event.StringSelectMenuInteractionData()
+			beequip := t.GetBeequipInProgressData()
+			if beequip.Waxes == nil {
+				beequip.Waxes = []string{}
+			}
+			selectedWax := interactionData.Values[0]
+			beequip.Waxes = append(beequip.Waxes, selectedWax)
+			t.SetBeequipInProgressData(beequip)
+			waxOrderStr := ""
+			for _, wax := range beequip.Waxes {
+				switch wax {
+				case "Soft Wax":
+					waxOrderStr += bssdata.SoftWaxEmoji + " "
+				case "Hard Wax":
+					waxOrderStr += bssdata.HardWaxEmoji + " "
+				case "Caustic Wax":
+					waxOrderStr += bssdata.CausticWaxEmoji + " "
+				case "Swirled Wax":
+					waxOrderStr += bssdata.SwirledWaxEmoji + " "
+				}
+			}
+			return event.UpdateMessage(discord.MessageUpdate{
+				Embeds: &[]discord.Embed{
+					{
+						Title:       "Select Waxes",
+						Description: "Select the waxes for your beequip.\n\nCurrently selected wax order:\n" + waxOrderStr,
+						Color:       common.ColorPrimary,
+					},
+				},
+			})
+		},
+	}
+}
+
 func AddBeequipInfoModal(tradeService *State) handler.Modal {
 	return handler.Modal{
 		Name: "beequip-info-modal",
@@ -321,7 +407,6 @@ func AddBeequipInfoModal(tradeService *State) handler.Modal {
 			case "bonuses":
 				dataArr = beequip.Bonuses
 			}
-			fmt.Println(dataArr)
 			for k, v := range dataArr {
 				currSelectedBuffString += k + ": " + strconv.Itoa(v) + "\n"
 			}

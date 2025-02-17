@@ -2,6 +2,11 @@ package bssdata
 
 import "github.com/disgoorg/disgo/discord"
 
+var SoftWaxEmoji = "<:SoftWax:1340564900581347360:>"
+var HardWaxEmoji = "<:HardWax:1340564899037839530:>"
+var CausticWaxEmoji = ":<CausticWax:1340564895522881606:>"
+var SwirledWaxEmoji = ":<SwirledWax:1340564904117141554:>"
+
 var WaxSelectMenuOptions = []discord.StringSelectMenuOption{
 	{
 		Label: "Soft Wax",
