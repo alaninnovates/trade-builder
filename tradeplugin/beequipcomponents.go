@@ -2,11 +2,15 @@ package tradeplugin
 
 import (
 	"alaninnovates.com/trade-builder/common"
+	"alaninnovates.com/trade-builder/common/loaders"
 	"alaninnovates.com/trade-builder/tradeplugin/trade"
+	"fmt"
 	"github.com/disgoorg/disgo/discord"
 	"github.com/disgoorg/disgo/events"
 	"github.com/disgoorg/handler"
 	"github.com/disgoorg/json"
+	"golang.org/x/text/cases"
+	"golang.org/x/text/language"
 	"strconv"
 	"strings"
 )
@@ -28,6 +32,81 @@ var MissingMessage = discord.MessageUpdate{
 	Components: &[]discord.ContainerComponent{},
 }
 
+func GenerateBeequipMessage(userId string, stepType string, stepTypePlural string, options []string) discord.MessageUpdate {
+	stepTypeCapitalized := cases.Title(language.English).String(stepTypePlural)
+	var optSelectMenuOptions []discord.StringSelectMenuOption
+	for _, opt := range options {
+		optSelectMenuOptions = append(optSelectMenuOptions, discord.StringSelectMenuOption{
+			Label: opt,
+			Value: opt,
+		})
+	}
+	fmt.Println(stepType, stepTypePlural, stepTypeCapitalized, options, userId)
+	return discord.MessageUpdate{
+		Embeds: &[]discord.Embed{
+			{
+				Title:       "Select " + stepTypeCapitalized,
+				Description: fmt.Sprintf("Select the %s for your beequip.\n\nCurrently selected %s: None", stepTypePlural, stepTypePlural),
+				Color:       common.ColorPrimary,
+			},
+		},
+		Components: &[]discord.ContainerComponent{
+			discord.ActionRowComponent{
+				discord.StringSelectMenuComponent{
+					CustomID:    fmt.Sprintf("handler:beequip-info-number:%s:%s", userId, stepTypePlural),
+					Placeholder: "Select " + stepTypeCapitalized,
+					Options:     optSelectMenuOptions,
+				},
+			},
+			discord.ActionRowComponent{
+				discord.ButtonComponent{
+					CustomID: fmt.Sprintf("handler:beequip-confirm:%s", userId),
+					Label:    "Confirm " + stepTypeCapitalized,
+					Style:    discord.ButtonStylePrimary,
+				},
+			},
+		},
+	}
+}
+
+func GenerateAbilityMessage(event *events.ComponentInteractionCreate, beequip trade.Beequip) discord.MessageUpdate {
+	abilities := loaders.GetBeequipAbility(beequip.Name)
+	var optSelectMenuOptions []discord.StringSelectMenuOption
+	for _, opt := range abilities {
+		optSelectMenuOptions = append(optSelectMenuOptions, discord.StringSelectMenuOption{
+			Label: opt,
+			Value: opt,
+		})
+	}
+	return discord.MessageUpdate{
+		Embeds: &[]discord.Embed{
+			{
+				Title:       "Select Abilities",
+				Description: "Select the abilities for your beequip.\n\nCurrently selected abilities: None",
+				Color:       common.ColorPrimary,
+			},
+		},
+		Components: &[]discord.ContainerComponent{
+			discord.ActionRowComponent{
+				discord.StringSelectMenuComponent{
+					CustomID:    fmt.Sprintf("handler:beequip-info-ability:%s", event.User().ID.String()),
+					Placeholder: "Select abilities",
+					Options:     optSelectMenuOptions,
+					MinValues:   json.Ptr(0),
+					MaxValues:   len(optSelectMenuOptions),
+				},
+			},
+			discord.ActionRowComponent{
+				discord.ButtonComponent{
+					CustomID: fmt.Sprintf("handler:beequip-confirm:%s", event.User().ID.String()),
+					Label:    "Confirm Abilities",
+					Style:    discord.ButtonStylePrimary,
+				},
+			},
+		},
+	}
+}
+
 func ConfirmButton(tradeService *State) handler.Component {
 	return handler.Component{
 		Name:  "beequip-confirm",
@@ -38,31 +117,29 @@ func ConfirmButton(tradeService *State) handler.Component {
 				return event.UpdateMessage(MissingMessage)
 			}
 			step := t.GetBeequipInProgressStep()
+			beequip := t.GetBeequipInProgressData()
 			switch step {
 			case trade.BeequipInProgressStepBuffs:
 				t.SetBeequipInProgressStep(trade.BeequipInProgressStepDebuffs)
-				return event.UpdateMessage(discord.MessageUpdate{
-					Content: json.Ptr("Select debuffs"),
-					Embeds:  &[]discord.Embed{},
-				})
+				debuffs := loaders.GetBeequipDebuffs(beequip.Name)
+				if len(debuffs) == 0 {
+					if len(loaders.GetBeequipAbility(beequip.Name)) == 0 {
+						t.SetBeequipInProgressStep(trade.BeequipInProgressStepBonuses)
+						return event.UpdateMessage(GenerateBeequipMessage(event.User().ID.String(), "bonus", "bonuses", loaders.GetBeequipBonuses(beequip.Name)))
+					}
+					t.SetBeequipInProgressStep(trade.BeequipInProgressStepAbility)
+					return event.UpdateMessage(GenerateAbilityMessage(event, beequip))
+				}
+				return event.UpdateMessage(GenerateBeequipMessage(event.User().ID.String(), "debuff", "debuffs", debuffs))
 			case trade.BeequipInProgressStepDebuffs:
 				t.SetBeequipInProgressStep(trade.BeequipInProgressStepAbility)
-				return event.UpdateMessage(discord.MessageUpdate{
-					Content: json.Ptr("Select abilities"),
-					Embeds:  &[]discord.Embed{},
-				})
+				return event.UpdateMessage(GenerateAbilityMessage(event, beequip))
 			case trade.BeequipInProgressStepAbility:
 				t.SetBeequipInProgressStep(trade.BeequipInProgressStepBonuses)
-				return event.UpdateMessage(discord.MessageUpdate{
-					Content: json.Ptr("Select bonuses"),
-					Embeds:  &[]discord.Embed{},
-				})
+				return event.UpdateMessage(GenerateBeequipMessage(event.User().ID.String(), "bonus", "bonuses", loaders.GetBeequipBonuses(beequip.Name)))
 			case trade.BeequipInProgressStepBonuses:
 				t.SetBeequipInProgressStep(trade.BeequipInProgressStepWaxes)
-				return event.UpdateMessage(discord.MessageUpdate{
-					Content: json.Ptr("Select waxes"),
-					Embeds:  &[]discord.Embed{},
-				})
+				// todo: this is special
 			case trade.BeequipInProgressStepWaxes:
 				t.SetBeequipInProgressStep(trade.BeequipInProgressStepNone)
 				switch t.GetBeequipInProgressType() {
@@ -112,6 +189,16 @@ func AddNumberInfoButton(tradeService *State) handler.Component {
 					beequip.Buffs = make(map[string]int)
 				}
 				beequip.Buffs[infoType] = 0
+			case "debuffs":
+				if beequip.Debuffs == nil {
+					beequip.Debuffs = make(map[string]int)
+				}
+				beequip.Debuffs[infoType] = 0
+			case "bonuses":
+				if beequip.Bonuses == nil {
+					beequip.Bonuses = make(map[string]int)
+				}
+				beequip.Bonuses[infoType] = 0
 			}
 			t.SetBeequipInProgressData(beequip)
 			return event.Modal(discord.ModalCreate{
@@ -126,6 +213,55 @@ func AddNumberInfoButton(tradeService *State) handler.Component {
 							MinLength: json.Ptr(1),
 							MaxLength: 2,
 						},
+					},
+				},
+			})
+		},
+	}
+}
+
+func AddAbilityInfoButton(tradeService *State) handler.Component {
+	return handler.Component{
+		Name: "beequip-info-ability",
+		Check: func(event *events.ComponentInteractionCreate) bool {
+			allow := event.User().ID.String() == strings.Split(event.StringSelectMenuInteractionData().CustomID(), ":")[2]
+			if !allow {
+				_ = event.CreateMessage(discord.NewMessageCreateBuilder().
+					SetContent("This is not your trade!").
+					SetEphemeral(true).
+					Build())
+			}
+			return allow
+		},
+		Handler: func(event *events.ComponentInteractionCreate) error {
+			t := tradeService.GetTrade(event.User().ID)
+			if t == nil {
+				return event.UpdateMessage(MissingMessage)
+			}
+			interactionData := event.StringSelectMenuInteractionData()
+			beequip := t.GetBeequipInProgressData()
+			if beequip.Ability == nil {
+				beequip.Ability = make(map[string]bool)
+			}
+			abilityValuesStr := ""
+			for _, ability := range interactionData.Values {
+				beequip.Ability[ability] = true
+				abilityValuesStr += ":white_check_mark: " + ability + "\n"
+			}
+			for k := range beequip.Ability {
+				for _, ability := range loaders.GetBeequipAbility(beequip.Name) {
+					if k != ability {
+						abilityValuesStr += ":x: " + ability + "\n"
+					}
+				}
+			}
+			t.SetBeequipInProgressData(beequip)
+			return event.UpdateMessage(discord.MessageUpdate{
+				Embeds: &[]discord.Embed{
+					{
+						Title:       "Select Abilities",
+						Description: "Select the abilities for your beequip.\n\nCurrently selected abilities:\n" + abilityValuesStr,
+						Color:       common.ColorPrimary,
 					},
 				},
 			})
@@ -159,17 +295,41 @@ func AddBeequipInfoModal(tradeService *State) handler.Modal {
 						break
 					}
 				}
+			case "debuffs":
+				for k, v := range beequip.Debuffs {
+					if v == 0 {
+						beequip.Debuffs[k] = valueInt
+						break
+					}
+				}
+			case "bonuses":
+				for k, v := range beequip.Bonuses {
+					if v == 0 {
+						beequip.Bonuses[k] = valueInt
+						break
+					}
+				}
 			}
 			t.SetBeequipInProgressData(beequip)
 			currSelectedBuffString := ""
-			for k, v := range beequip.Buffs {
+			var dataArr map[string]int
+			switch infoGroup {
+			case "buffs":
+				dataArr = beequip.Buffs
+			case "debuffs":
+				dataArr = beequip.Debuffs
+			case "bonuses":
+				dataArr = beequip.Bonuses
+			}
+			fmt.Println(dataArr)
+			for k, v := range dataArr {
 				currSelectedBuffString += k + ": " + strconv.Itoa(v) + "\n"
 			}
 			return event.UpdateMessage(discord.MessageUpdate{
 				Embeds: &[]discord.Embed{
 					{
-						Title:       "Select Buffs",
-						Description: "Select the buffs for your beequip.\n\nCurrently selected buffs:\n" + currSelectedBuffString,
+						Title:       "Select " + cases.Title(language.English).String(infoGroup),
+						Description: fmt.Sprintf("Select the %s for your beequip.\n\nCurrently selected %s:\n"+currSelectedBuffString, infoGroup, infoGroup),
 						Color:       common.ColorPrimary,
 					},
 				},
