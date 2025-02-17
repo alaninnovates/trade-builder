@@ -16,17 +16,6 @@ import (
 	"strings"
 )
 
-/*
-	flow:
-		send embed: select buffs with context menu. button to confirm buffs
-			for each item selected, send modal to input value
-			update embed with buffs
-		same for debuffs/ability/bonuses
-		send embed: select abilities with multi select context menu
-			for each item selected, update embed with abilities
-		send embed: select waxes with 5 context menus (one for each slot)
-*/
-
 var MissingMessage = discord.MessageUpdate{
 	Content:    json.Ptr("Your trade seems to have gone missing... Create a new one with `/trade create`"),
 	Embeds:     &[]discord.Embed{},
