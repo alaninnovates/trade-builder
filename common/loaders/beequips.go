@@ -2,6 +2,8 @@ package loaders
 
 import (
 	"github.com/disgoorg/json"
+	"github.com/fogleman/gg"
+	"image"
 	"os"
 )
 
@@ -61,4 +63,23 @@ func GetAllBeequips() []string {
 		beequips = append(beequips, beequip)
 	}
 	return beequips
+}
+
+var cachedBeequips = make(map[string]image.Image)
+
+func GetBeequipImage(beequipName string) image.Image {
+	if len(cachedBeequips) == 0 {
+		files, err := os.ReadDir("assets/beequips")
+		if err != nil {
+			panic(err)
+		}
+		for _, file := range files {
+			img, err := gg.LoadImage("assets/beequips/" + file.Name())
+			if err != nil {
+				panic(err)
+			}
+			cachedBeequips[file.Name()[:len(file.Name())-4]] = img
+		}
+	}
+	return cachedBeequips[beequipName]
 }

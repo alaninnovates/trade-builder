@@ -28,24 +28,36 @@ func centerAnchorL(fullSize, desiredWidth int) float64 {
 func RenderTrade(t *Trade) *io.PipeReader {
 	var offeringStickers, lfStickers []string
 	var offeringQuantities, lfQuantities []int
-	// todo: support beequips
-	for _, stickerRaw := range t.GetLookingFor() {
-		sticker := stickerRaw.(Sticker)
-		lfStickers = append(lfStickers, sticker.Name)
-		lfQuantities = append(lfQuantities, sticker.Quantity)
+	var offeringBeequips, lfBeequips []Beequip
+	for _, itemRaw := range t.GetLookingFor() {
+		switch item := itemRaw.(type) {
+		case Sticker:
+			lfStickers = append(lfStickers, item.Name)
+			lfQuantities = append(lfQuantities, item.Quantity)
+		case Beequip:
+			lfBeequips = append(lfBeequips, item)
+		}
 	}
-	for _, stickerRaw := range t.GetOffering() {
-		sticker := stickerRaw.(Sticker)
-		offeringStickers = append(offeringStickers, sticker.Name)
-		offeringQuantities = append(offeringQuantities, sticker.Quantity)
+	for _, itemRaw := range t.GetOffering() {
+		switch item := itemRaw.(type) {
+		case Sticker:
+			offeringStickers = append(offeringStickers, item.Name)
+			offeringQuantities = append(offeringQuantities, item.Quantity)
+		case Beequip:
+			offeringBeequips = append(offeringBeequips, item)
+		}
 	}
 
 	offeringRowCnt := int(math.Ceil(float64(len(offeringStickers)) / float64(4)))
 	lfRowCnt := int(math.Ceil(float64(len(lfStickers)) / float64(4)))
 	//fmt.Println(offeringRowCnt, lfRowCnt)
 
-	offeringHeight := float64(max(672, 20*offeringRowCnt+148*(offeringRowCnt-1)+128+20))
-	lfHeight := float64(max(672, 20*lfRowCnt+148*(lfRowCnt-1)+128+20))
+	offeringBeequipRowCnt := int(math.Ceil(float64(len(offeringBeequips)) / float64(2)))
+	lfBeequipRowCnt := int(math.Ceil(float64(len(lfBeequips)) / float64(2)))
+	//fmt.Println(offeringBeequipRowCnt, lfBeequipRowCnt)
+
+	offeringHeight := float64(max(672, 20*offeringRowCnt+148*(offeringRowCnt-1)+128+20+(20*offeringBeequipRowCnt+520*offeringBeequipRowCnt)))
+	lfHeight := float64(max(672, 20*lfRowCnt+148*(lfRowCnt-1)+128+20+(20*lfBeequipRowCnt+520*lfBeequipRowCnt)))
 	//fmt.Println(offeringHeight, lfHeight)
 
 	addtlHeight := -672 - 168 + int(max(offeringHeight, lfHeight))
@@ -103,17 +115,20 @@ func RenderTrade(t *Trade) *io.PipeReader {
 		panic(err)
 	}
 
-	drawStickers(dc, 0, offeringRowCnt, offeringStickers, offeringQuantities)
-	drawStickers(dc, 949, lfRowCnt, lfStickers, lfQuantities)
+	lastYOffering := drawStickers(dc, 0, offeringRowCnt, offeringStickers, offeringQuantities)
+	lastYLf := drawStickers(dc, 949, lfRowCnt, lfStickers, lfQuantities)
+	drawBeequips(dc, 0, lastYOffering+20, 1, offeringBeequips)
+	drawBeequips(dc, 949, lastYLf+20, 1, offeringBeequips)
 
 	return common.ImageToPipe(dc.Image())
 }
 
-func drawStickers(dc *gg.Context, offset int, rowCnt int, stickers []string, quantities []int) {
+func drawStickers(dc *gg.Context, offset int, rowCnt int, stickers []string, quantities []int) int {
 	padding := 20
 	/*
 		Each sticker has 168 of space: 20 + 128 + 20
 	*/
+	lastY := 0
 	idx := 0
 	for i := 1; i <= rowCnt; i++ {
 		for j := 1; j <= 4; j++ {
@@ -123,6 +138,7 @@ func drawStickers(dc *gg.Context, offset int, rowCnt int, stickers []string, qua
 			img := loaders.GetStickerImage(stickers[idx])
 			posX := 191 + offset + padding*j + 148*(j-1)
 			posY := 215 + padding*i + 148*(i-1)
+			lastY = posY
 			// draw border
 			dc.SetHexColor("#00000055")
 			dc.SetLineWidth(4)
@@ -141,4 +157,102 @@ func drawStickers(dc *gg.Context, offset int, rowCnt int, stickers []string, qua
 			idx++
 		}
 	}
+	return lastY + 128
+}
+
+func drawBeequips(dc *gg.Context, offsetX int, offsetY, rowCnt int, beequips []Beequip) {
+	padding := 20
+	/*
+		Each beequip has 336 of space: 20(pad) + 128+20+20+128 + 20(pad)
+	*/
+	idx := 0
+	for i := 1; i <= rowCnt; i++ {
+		for j := 1; j <= 2; j++ {
+			if idx >= len(beequips) {
+				break
+			}
+			img := loaders.GetBeequipImage(beequips[idx].Name)
+			posX := 191 + offsetX + padding*j + 148*(j-1)
+			posY := offsetY + padding*i + 148*(i-1)
+			// draw border
+			dc.SetHexColor("#00000055")
+			dc.SetLineWidth(4)
+			dc.DrawRoundedRectangle(float64(posX), float64(posY), 296, 500, 12)
+			dc.Stroke()
+			// draw beequip image
+			dc.DrawImageAnchored(img, int(posX)+148, posY+padding, 0.5, 0)
+			currY := posY + img.Bounds().Dy()
+			filledStarImg, err := gg.LoadPNG("assets/star_filled.png")
+			if err != nil {
+				panic(err)
+			}
+			emptyStarImg, err := gg.LoadPNG("assets/star_empty.png")
+			if err != nil {
+				panic(err)
+			}
+			for k := 0; k < 5; k++ {
+				if k < beequips[idx].Potential {
+					dc.DrawImageAnchored(filledStarImg, posX+90+k*32, currY-25, 0.5, 0)
+				} else {
+					dc.DrawImageAnchored(emptyStarImg, posX+90+k*32, currY-25, 0.5, 0)
+				}
+			}
+			currY += 40
+			// info
+			currY += drawTextSet(dc, posX+padding, currY, convertTextSet(beequips[idx].Buffs), "#16a34a")
+			currY += drawTextSet(dc, posX+padding, currY, convertTextSet(beequips[idx].Debuffs), "#ef4444")
+			currY += drawTextSet(dc, posX+padding, currY, convertBooleanSet(beequips[idx].Ability), "#ca8a04")
+			currY += drawTextSet(dc, posX+padding, currY, convertTextSet(beequips[idx].Bonuses), "#ca8a04")
+			currY += 30
+			centerX := posX + padding + 128
+			for i, waxType := range beequips[idx].Waxes {
+				waxPosX := 0
+				add := 0
+				if len(beequips[idx].Waxes)%2 == 0 {
+					add = 25
+				}
+				if i >= len(beequips[idx].Waxes)/2+1 {
+					waxPosX = centerX + 50*(i-len(beequips[idx].Waxes)/2) + add
+				} else if i == len(beequips[idx].Waxes)/2 {
+					waxPosX = centerX + add
+				} else {
+					waxPosX = centerX - 50*(i+1) + add
+				}
+				//fmt.Println(waxPosX)
+				waxImg := loaders.GetWaxImage(waxType)
+				dc.DrawImageAnchored(waxImg, waxPosX, currY-50, 0.5, 0)
+			}
+			idx++
+		}
+	}
+}
+
+func convertTextSet(textSet map[string]int) []string {
+	var finalText []string
+	for k, v := range textSet {
+		if v > 0 {
+			finalText = append(finalText, strconv.Itoa(v)+k)
+		}
+	}
+	return finalText
+}
+
+func convertBooleanSet(booleanSet map[string]bool) []string {
+	var finalText []string
+	for k, v := range booleanSet {
+		if v {
+			finalText = append(finalText, k)
+		}
+	}
+	return finalText
+}
+
+func drawTextSet(dc *gg.Context, posXStart int, posYStart int, text []string, color string) int {
+	lastY := 0
+	for _, v := range text {
+		dc.SetHexColor(color)
+		dc.DrawString(v, float64(posXStart), float64(posYStart+lastY))
+		lastY += 40
+	}
+	return lastY
 }
