@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 	"strconv"
+	"strings"
 
 	"github.com/fogleman/gg"
 )
@@ -117,8 +118,8 @@ func RenderTrade(t *Trade) *io.PipeReader {
 
 	lastYOffering := drawStickers(dc, 0, offeringRowCnt, offeringStickers, offeringQuantities)
 	lastYLf := drawStickers(dc, 949, lfRowCnt, lfStickers, lfQuantities)
-	drawBeequips(dc, 0, lastYOffering+20, 1, offeringBeequips)
-	drawBeequips(dc, 949, lastYLf+20, 1, offeringBeequips)
+	drawBeequips(dc, 0, lastYOffering+20, offeringBeequipRowCnt, offeringBeequips)
+	drawBeequips(dc, 949, lastYLf+20, lfBeequipRowCnt, lfBeequips)
 
 	return common.ImageToPipe(dc.Image())
 }
@@ -157,6 +158,9 @@ func drawStickers(dc *gg.Context, offset int, rowCnt int, stickers []string, qua
 			idx++
 		}
 	}
+	if lastY == 0 {
+		lastY += 60
+	}
 	return lastY + 128
 }
 
@@ -181,7 +185,7 @@ func drawBeequips(dc *gg.Context, offsetX int, offsetY, rowCnt int, beequips []B
 			dc.Stroke()
 			// draw beequip image
 			dc.DrawImageAnchored(img, int(posX)+148, posY+padding, 0.5, 0)
-			currY := posY + img.Bounds().Dy()
+			currY := posY + padding*2 + img.Bounds().Dy()
 			filledStarImg, err := gg.LoadPNG("assets/star_filled.png")
 			if err != nil {
 				panic(err)
@@ -192,17 +196,17 @@ func drawBeequips(dc *gg.Context, offsetX int, offsetY, rowCnt int, beequips []B
 			}
 			for k := 0; k < 5; k++ {
 				if k < beequips[idx].Potential {
-					dc.DrawImageAnchored(filledStarImg, posX+90+k*32, currY-25, 0.5, 0)
+					dc.DrawImageAnchored(filledStarImg, posX+90+k*32, currY-20, 0.5, 0)
 				} else {
-					dc.DrawImageAnchored(emptyStarImg, posX+90+k*32, currY-25, 0.5, 0)
+					dc.DrawImageAnchored(emptyStarImg, posX+90+k*32, currY-20, 0.5, 0)
 				}
 			}
 			currY += 40
 			// info
-			currY += drawTextSet(dc, posX+padding, currY, convertTextSet(beequips[idx].Buffs), "#16a34a")
-			currY += drawTextSet(dc, posX+padding, currY, convertTextSet(beequips[idx].Debuffs), "#ef4444")
+			currY += drawTextSet(dc, posX+padding, currY, convertTextSet(dc, beequips[idx].Buffs), "#16a34a")
+			currY += drawTextSet(dc, posX+padding, currY, convertTextSet(dc, beequips[idx].Debuffs), "#ef4444")
 			currY += drawTextSet(dc, posX+padding, currY, convertBooleanSet(beequips[idx].Ability), "#ca8a04")
-			currY += drawTextSet(dc, posX+padding, currY, convertTextSet(beequips[idx].Bonuses), "#ca8a04")
+			currY += drawTextSet(dc, posX+padding, currY, convertTextSet(dc, beequips[idx].Bonuses), "#ca8a04")
 			currY += 30
 			centerX := posX + padding + 128
 			for i, waxType := range beequips[idx].Waxes {
@@ -227,13 +231,34 @@ func drawBeequips(dc *gg.Context, offsetX int, offsetY, rowCnt int, beequips []B
 	}
 }
 
-func convertTextSet(textSet map[string]int) []string {
+func convertTextSet(dc *gg.Context, textSet map[string]int) []string {
 	var finalText []string
 	for k, v := range textSet {
 		if v > 0 {
-			finalText = append(finalText, strconv.Itoa(v)+k)
+			textLen, _ := dc.MeasureString(strconv.Itoa(v) + k)
+			if textLen > 128 {
+				finalText = append(finalText, splitText(strconv.Itoa(v)+k)...)
+			} else {
+				finalText = append(finalText, strconv.Itoa(v)+k)
+			}
 		}
 	}
+	return finalText
+}
+
+func splitText(text string) []string {
+	words := strings.Split(text, " ")
+	var finalText []string
+	currText := ""
+	for _, word := range words {
+		if len(currText)+len(word) > 20 {
+			finalText = append(finalText, currText)
+			currText = word
+		} else {
+			currText += " " + word
+		}
+	}
+	finalText = append(finalText, currText)
 	return finalText
 }
 
@@ -251,8 +276,10 @@ func drawTextSet(dc *gg.Context, posXStart int, posYStart int, text []string, co
 	lastY := 0
 	for _, v := range text {
 		dc.SetHexColor(color)
-		dc.DrawString(v, float64(posXStart), float64(posYStart+lastY))
-		lastY += 40
+		dc.DrawStringWrapped(v, float64(posXStart), float64(posYStart+lastY), 0, 0, 128, 1.5, gg.AlignLeft)
+		// modify last y, accounting for the height of the text due to wrap
+		lines := dc.WordWrap(v, 128)
+		lastY += len(lines) * 30
 	}
 	return lastY
 }

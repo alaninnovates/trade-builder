@@ -5,19 +5,17 @@ import (
 	"os"
 )
 
-type CachedBee struct {
+type CachedSticker struct {
 	Id       string
-	Level    int
-	Gifted   bool
-	Beequip  string
-	Mutation string
+	Quantity int
 }
 
-type CachedHive map[int]CachedBee
+type CachedTradeSide map[int]CachedSticker
 
 type CachedUser struct {
-	Id   string
-	Hive CachedHive
+	Id         string
+	LookingFor CachedTradeSide
+	Offering   CachedTradeSide
 }
 
 type JsonCache struct {
@@ -27,7 +25,7 @@ func NewJsonCache() *JsonCache {
 	return &JsonCache{}
 }
 
-func (j *JsonCache) SaveHives(fileName string, cachedUsers []CachedUser) error {
+func (j *JsonCache) SaveTrades(fileName string, cachedUsers []CachedUser) error {
 	jsonHive, err := json.MarshalIndent(cachedUsers, "", "  ")
 	if err != nil {
 		return err
@@ -49,7 +47,7 @@ func (j *JsonCache) SaveHives(fileName string, cachedUsers []CachedUser) error {
 	return nil
 }
 
-func (j *JsonCache) LoadHives(fileName string) ([]CachedUser, error) {
+func (j *JsonCache) LoadTrades(fileName string) ([]CachedUser, error) {
 	f, err := os.Open(fileName)
 	if err != nil {
 		return nil, err
